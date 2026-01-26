@@ -199,7 +199,7 @@ const Playback = ({ state, setState, apiKey, setApiKey }) => {
         if (imageBase64) parts.push({ inlineData: { mimeType: "image/png", data: imageBase64 } });
 
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${activeKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: parts }] })
@@ -371,7 +371,7 @@ const StrategyRoom = ({ state, setState, apiKey, setApiKey }) => {
                     </div>
                 </div>
                 <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end">
-                    <button onClick={runInitialAnalysis} disabled={isAnalyzing || !imageBase64} className="bg-emerald-600 px-6 py-2 rounded text-white text-sm font-bold flex gap-2 disabled:opacity-50 shadow-lg shadow-emerald-900/20">
+                    <button onClick={runInitialAnalysis} disabled={isAnalyzing} className="bg-emerald-600 px-6 py-2 rounded text-white text-sm font-bold flex gap-2 disabled:opacity-50 shadow-lg shadow-emerald-900/20">
                         {isAnalyzing ? "Scanning..." : <><Brain size={16}/> Generate Plan</>}
                     </button>
                 </div>
@@ -412,7 +412,8 @@ const calculateMetrics = (trades, balance, overhead, selectedAccount) => {
     const strategyStats = {};
     const tickerStats = {};
     const dayStats = { 0: {pnl:0, count:0}, 1: {pnl:0, count:0}, 2: {pnl:0, count:0}, 3: {pnl:0, count:0}, 4: {pnl:0, count:0}, 5: {pnl:0, count:0}, 6: {pnl:0, count:0} };
-    
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
     const sorted = [...activeTrades].sort((a,b) => new Date(a.date + ' ' + (a.time || '12:00')) - new Date(b.date + ' ' + (b.time || '12:00')));
 
     let consecLosses = 0, maxConsecLosses = 0;
@@ -591,7 +592,6 @@ export default function TradingJournal() {
         for(let i=1; i<lines.length; i++) {
             const row = lines[i].split(',').map(c => c.trim().replace(/"/g, '')); if(!row[idxSym]) continue;
             let pnl = parseFloat(row[idxPnL].replace(/[^0-9.-]/g, '')); if(row[idxPnL].includes('(')) pnl = -Math.abs(pnl); 
-            // Simplified for stability
             newTrades.push({ id: Date.now() + i, date: new Date().toISOString().split('T')[0], time: "12:00", ticker: row[idxSym], direction: 'Long', size: 1, pnl: pnl.toFixed(2), fees: "0.00", mistake: 'None', notes: 'TopstepX Import', setup: 'Imported', account: targetAccount, chartImage: null });
         }
         setTrades([...trades, ...newTrades]);
@@ -724,93 +724,50 @@ export default function TradingJournal() {
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                                <div className="flex gap-2 col-span-1 md:col-span-2">
-                                    <div className="w-2/3">
-                                        <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Date</label>
-                                        <input type="date" name="date" value={newTrade.date} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
-                                    </div>
-                                    <div className="w-1/3">
-                                        <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Time</label>
-                                        <input type="time" name="time" value={newTrade.time} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
-                                    </div>
-                                </div>
-                                <div className="relative">
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Ticker</label>
-                                    <select name="ticker" value={newTrade.ticker} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm appearance-none">
-                                        <option value="MNQ">MNQ</option>
-                                        <option value="NQ">NQ</option>
-                                        <option value="ES">ES</option>
-                                        <option value="MES">MES</option>
-                                        <option value="CL">CL</option>
-                                        <option value="GC">GC</option>
-                                        <option value="RTY">RTY</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Direction</label>
-                                    <select name="direction" value={newTrade.direction} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm">
-                                        <option value="Long">Long</option>
-                                        <option value="Short">Short</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Strategy / Setup</label>
-                                    <input type="text" name="setup" placeholder="Setup" value={newTrade.setup} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
-                                </div>
-                                
-                                <div className="relative">
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Duration (Mins)</label>
-                                    <input type="number" name="duration" placeholder="Min" value={newTrade.duration} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm pl-2" />
-                                    <span className="absolute right-2 top-8 text-xs text-slate-500">m</span>
-                                </div>
+                            <div className="flex gap-2 col-span-1 md:col-span-2">
+                                <input type="date" name="date" value={newTrade.date} onChange={handleInputChange} className="w-2/3 bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
+                                <input type="time" name="time" value={newTrade.time} onChange={handleInputChange} className="w-1/3 bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
+                            </div>
+                            <div className="relative">
+                                <select name="ticker" value={newTrade.ticker} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm appearance-none">
+                                    <option value="MNQ">MNQ</option><option value="NQ">NQ</option><option value="ES">ES</option><option value="MES">MES</option><option value="CL">CL</option><option value="GC">GC</option><option value="RTY">RTY</option>
+                                </select>
+                            </div>
+                            <select name="direction" value={newTrade.direction} onChange={handleInputChange} className="bg-slate-800 border-slate-700 text-white rounded p-2 text-sm">
+                                <option value="Long">Long</option><option value="Short">Short</option>
+                            </select>
+                            <input type="text" name="setup" placeholder="Setup (e.g. Breakout)" value={newTrade.setup} onChange={handleInputChange} className="bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
+                            
+                            <div className="relative">
+                                <input type="number" name="duration" placeholder="Duration (min)" value={newTrade.duration} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm pl-2" />
+                                <span className="absolute right-2 top-2 text-xs text-slate-500">min</span>
+                            </div>
 
-                                <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Position Size</label>
-                                    <input type="number" name="size" placeholder="Size" value={newTrade.size} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
-                                </div>
-                                
-                                <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Entry Price</label>
-                                    <input type="number" name="entry" placeholder="Entry" value={newTrade.entry} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Stop Loss</label>
-                                    <input type="number" name="stop" placeholder="Stop" value={newTrade.stop} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Exit Price</label>
-                                    <input type="number" name="exit" placeholder="Exit" value={newTrade.exit} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
-                                </div>
-                                
-                                <div className="relative">
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Pt Value ($)</label>
-                                    <input type="number" name="pointValue" placeholder="Pt Val" value={newTrade.pointValue} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm pl-2" />
-                                    <span className="absolute right-2 top-8 text-xs text-slate-500">$</span>
-                                </div>
+                            <input type="number" name="size" placeholder="Size" value={newTrade.size} onChange={handleInputChange} className="bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
+                            
+                            <input type="number" name="entry" placeholder="Entry" value={newTrade.entry} onChange={handleInputChange} className="bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
+                            <input type="number" name="stop" placeholder="Stop" value={newTrade.stop} onChange={handleInputChange} className="bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
+                            <input type="number" name="exit" placeholder="Exit" value={newTrade.exit} onChange={handleInputChange} className="bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
+                            
+                            <div className="relative">
+                                <input type="number" name="pointValue" placeholder="Pt Val ($)" value={newTrade.pointValue} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm pl-2" />
+                                <span className="absolute right-2 top-2 text-xs text-slate-500">$</span>
+                            </div>
 
-                                <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Commissions</label>
-                                    <input type="number" name="fees" placeholder="Fees" value={newTrade.fees} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
-                                </div>
-                                
-                                <div>
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Account</label>
-                                    <select name="account" value={newTrade.account} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm">
-                                        {accounts.map(acc => <option key={acc} value={acc}>{acc}</option>)}
-                                    </select>
-                                </div>
-                                
-                                <div className="md:col-span-2">
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Execution Error</label>
-                                    <select name="mistake" value={newTrade.mistake} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm">
-                                        <option value="None">No Mistake (Clean)</option><option value="FOMO">FOMO / Chased</option><option value="Revenge">Revenge Trading</option><option value="No Plan">No Plan / Impulse</option><option value="Hesitation">Hesitation (Late)</option><option value="Moved Stop">Moved Stop Loss</option><option value="Early Exit">Early Exit (Fear)</option>
-                                    </select>
-                                </div>
+                            <input type="number" name="fees" placeholder="Fees (Auto)" value={newTrade.fees} onChange={handleInputChange} className="bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
+                            
+                            {/* Account Selector in Form */}
+                            <select name="account" value={newTrade.account} onChange={handleInputChange} className="bg-slate-800 border-slate-700 text-white rounded p-2 text-sm">
+                                {accounts.map(acc => <option key={acc} value={acc}>{acc}</option>)}
+                            </select>
+                            
+                            <select name="mistake" value={newTrade.mistake} onChange={handleInputChange} className="bg-slate-800 border-slate-700 text-white rounded p-2 text-sm md:col-span-2">
+                                <option value="None">No Mistake (Clean)</option><option value="FOMO">FOMO / Chased</option><option value="Revenge">Revenge Trading</option><option value="No Plan">No Plan / Impulse</option><option value="Hesitation">Hesitation (Late)</option><option value="Moved Stop">Moved Stop Loss</option><option value="Early Exit">Early Exit (Fear)</option>
+                            </select>
 
-                                <div className="col-span-2 md:col-span-3">
-                                    <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Trade Notes</label>
-                                    <input type="text" name="notes" placeholder="Psychology/Notes" value={newTrade.notes} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
-                                </div>
+                            <div className="col-span-2 md:col-span-3">
+                                <input type="text" name="notes" placeholder="Psychology/Notes" value={newTrade.notes} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm" />
+                            </div>
                             </div>
                             <div className="mt-4 flex gap-2">
                                 <button onClick={saveTrade} className={`w-full ${editingId ? 'bg-amber-600' : 'bg-blue-600'} text-white h-9 rounded font-bold text-sm hover:opacity-90 transition-opacity`}>
