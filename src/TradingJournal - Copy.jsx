@@ -1,22 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 
-// --- 🟢 CONFIGURATION 🟢 ---
-// Paste your API key inside the quotes below to "hard bake" it into the app.
-const USER_API_KEY = ""; 
-
-// --- TICKER SPECS ---
-const TICKER_SPECS = {
-    'MNQ': { pointValue: 2, commission: 1.12 },
-    'MES': { pointValue: 5, commission: 1.12 },
-    'NQ': { pointValue: 20, commission: 3.70 },
-    'ES': { pointValue: 50, commission: 3.70 },
-    'RTY': { pointValue: 50, commission: 3.70 },
-    'CL': { pointValue: 1000, commission: 4.00 },
-    'GC': { pointValue: 100, commission: 4.00 },
-    'MYM': { pointValue: 10, commission: 1.12 },
-    'YM': { pointValue: 5, commission: 3.70 },
-};
-
 // --- 1. ERROR BOUNDARY ---
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
@@ -29,20 +12,12 @@ class ErrorBoundary extends React.Component {
           <h2 className="text-xl font-bold mb-2 text-white">System Recovery</h2>
           <p className="text-sm mb-4 text-slate-400">Data integrity check failed. Resetting secure storage.</p>
           <div className="bg-black/50 p-2 rounded text-xs text-rose-300 mb-4 font-mono">{this.state.error?.toString()}</div>
-          <div className="flex gap-2">
-              <button 
-                onClick={() => { try { sessionStorage.clear(); } catch(e){} window.location.reload(); }} 
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-bold transition-colors"
-              >
-                Clear Trades Only
-              </button>
-              <button 
-                onClick={() => { try { sessionStorage.clear(); localStorage.clear(); } catch(e){} window.location.reload(); }} 
-                className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded text-sm font-bold transition-colors"
-              >
-                Factory Reset
-              </button>
-          </div>
+          <button 
+            onClick={() => { try { localStorage.clear(); } catch(e){} window.location.reload(); }} 
+            className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded text-sm font-bold w-full transition-colors"
+          >
+            Reset & Reload
+          </button>
         </div>
       </div>
     );
@@ -51,28 +26,16 @@ class ErrorBoundary extends React.Component {
 }
 
 // --- 2. STORAGE ---
-const sessionStore = {
+const safeStorage = {
   get: (key, fallback) => {
     try {
       if (typeof window === 'undefined') return fallback;
-      const item = sessionStorage.getItem(key);
-      return item ? JSON.parse(item) : fallback;
-    } catch (e) { return fallback; }
-  },
-  set: (key, value) => {
-    try { if (typeof window !== 'undefined') window.sessionStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
-  }
-};
-
-const persistentStore = {
-  get: (key, fallback) => {
-    try {
       const item = localStorage.getItem(key);
       return item ? JSON.parse(item) : fallback;
     } catch (e) { return fallback; }
   },
   set: (key, value) => {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+    try { if (typeof window !== 'undefined') window.localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
   }
 };
 
@@ -109,12 +72,7 @@ const Icons = {
   ThumbsUp: (p) => <Icon d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" {...p} />,
   FileText: (p) => <Icon d={["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z", "M14 2v6h6", "M16 13H8", "M16 17H8", "M10 9H8"]} {...p} />,
   CheckCircle2: (p) => <Icon d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" {...p}><path d="M9 12l2 2 4-4"/></Icon>,
-  Filter: (p) => <Icon d={["M22 3H2l8 9.46V19l4 2v-8.54L22 3z"]} {...p} />,
-  Key: (p) => <Icon d={["M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"]} {...p} />,
-  Trending: (p) => <Icon d={["M23 6l-9.5 9.5-5-5L1 18"]} {...p} />,
-  Scale: (p) => <Icon d={["M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z", "M2 10l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z", "M7 21h10", "M12 3v18", "M6 10h2", "M8 10l3-8"]} {...p} />,
-  Book: (p) => <Icon d={["M4 19.5A2.5 2.5 0 0 1 6.5 17H20", "M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"]} {...p} />,
-  Zap: (p) => <Icon d={["M13 2L3 14h9l-1 8 10-12h-9l1-8z"]} {...p} />
+  Filter: (p) => <Icon d={["M22 3H2l8 9.46V19l4 2v-8.54L22 3z"]} {...p} />
 };
 
 // --- 4. CHARTS ---
@@ -149,13 +107,6 @@ const CardContent = ({ children, className = "" }) => <div className={`p-4 ${cla
 const parseRawDate = (dateStr) => {
     if (!dateStr) return new Date().toISOString().split('T')[0];
     const cleanStr = dateStr.trim();
-    if (cleanStr.includes('/')) {
-        const parts = cleanStr.split('/');
-        if(parts[2].length === 4) {
-             const d = new Date(cleanStr);
-             if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-        }
-    }
     const d = new Date(cleanStr);
     if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
     return new Date().toISOString().split('T')[0];
@@ -175,46 +126,14 @@ const calculateMetrics = (trades, balance, overhead, selectedAccount, filterTick
         if (!activeTrades.length) return null;
 
         let wins=0, losses=0, grossProfit=0, grossLoss=0, equity=[balance], maxDD=0, peak=balance;
-        
-        let currentWinStreak = 0, maxWinStreak = 0;
-        let currentLossStreak = 0, maxLossStreak = 0;
-        let longPnL = 0, longCount = 0;
-        let shortPnL = 0, shortCount = 0;
-        const dailyPnL = {}; 
-        const rMultiples = [];
-        
-        // Strategy Counters
-        let totalSize = 0;
-        let mistakeCounts = {};
-        let totalMistakes = 0;
-
         const timeStats = { "Night": 0, "AM": 0, "PM": 0 };
         const durationStats = { "< 2m": {wins: 0, total: 0}, "2-10m": {wins: 0, total: 0}, "10-60m": {wins: 0, total: 0}, "> 60m": {wins: 0, total: 0} };
         const strategyStats = {};
 
         [...activeTrades].sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(t => {
             const net = parseFloat(t.pnl)||0;
-            const risk = overhead.riskUnit || 150;
-            const tradeSize = parseFloat(t.size) || 1;
+            if(net>0) { wins++; grossProfit+=net; } else { losses++; grossLoss+=Math.abs(net); }
             
-            totalSize += tradeSize;
-            
-            if (t.mistake && t.mistake !== 'None') {
-                totalMistakes++;
-                mistakeCounts[t.mistake] = (mistakeCounts[t.mistake] || 0) + 1;
-            }
-
-            if (t.direction === 'Long') { longPnL += net; longCount++; }
-            else if (t.direction === 'Short') { shortPnL += net; shortCount++; }
-
-            if(net > 0) { wins++; grossProfit+=net; currentWinStreak++; currentLossStreak=0; maxWinStreak = Math.max(maxWinStreak, currentWinStreak); } 
-            else { losses++; grossLoss+=Math.abs(net); currentLossStreak++; currentWinStreak=0; maxLossStreak = Math.max(maxLossStreak, currentLossStreak); }
-            
-            rMultiples.push(net / risk);
-
-            const dStr = t.date;
-            dailyPnL[dStr] = (dailyPnL[dStr] || 0) + net;
-
             const cur = equity[equity.length-1]+net;
             if(cur>peak) peak=cur; if((peak-cur)>maxDD) maxDD=peak-cur;
             equity.push(cur);
@@ -239,60 +158,29 @@ const calculateMetrics = (trades, balance, overhead, selectedAccount, filterTick
         const expectancy = (winRate/100 * (wins>0?grossProfit/wins:0)) - ((1-winRate/100)*(losses>0?grossLoss/losses:0));
         const avgWin = wins > 0 ? grossProfit/wins : 0;
         const avgLoss = losses > 0 ? grossLoss/losses : 0;
-        const avgTradeSize = activeTrades.length ? totalSize / activeTrades.length : 0;
-
-        const avgR = rMultiples.reduce((a,b)=>a+b, 0) / rMultiples.length;
-        const stdDevR = Math.sqrt(rMultiples.map(x => Math.pow(x - avgR, 2)).reduce((a,b) => a+b, 0) / (rMultiples.length - 1)) || 1;
-        const sqn = rMultiples.length > 1 ? (avgR / stdDevR) * Math.sqrt(rMultiples.length) : 0;
-
-        const dailyValues = Object.values(dailyPnL);
-        const bestDay = dailyValues.length ? Math.max(...dailyValues) : 0;
-        const worstDay = dailyValues.length ? Math.min(...dailyValues) : 0;
 
         const insights = []; const painPoints = [];
+        if(netPnL>0) insights.push("Account Green");
+        if(winRate>=50) insights.push(`High WR: ${winRate.toFixed(0)}%`);
+        if(pf > 2.0) insights.push(`Strong PF: ${pf.toFixed(2)}`);
+        if(avgWin > avgLoss * 1.5) insights.push("Winners > 1.5x Losers");
         
-        // --- INSIGHT LOGIC ---
-        if (sqn > 2.5) insights.push(`Pro Level System (SQN: ${sqn.toFixed(2)})`);
-        else if (sqn > 1.6) insights.push(`Tradable System (SQN: ${sqn.toFixed(2)})`);
-
-        if(avgWin > avgLoss * 2) insights.push("Excellent R:R (> 2:1)");
-        if(pf > 1.5) insights.push(`Strong PF: ${pf.toFixed(2)}`);
+        if(insights.length === 0 && netPnL > -100) insights.push("Steady trading. Keep managing risk.");
         
-        // --- PAIN POINT LOGIC (INTERVENTION) ---
-        if (Math.abs(avgLoss) > overhead.riskUnit * 1.2) {
-             const safeSize = (avgTradeSize * (overhead.riskUnit / Math.abs(avgLoss))).toFixed(1);
-             painPoints.push(`Oversized Risk! Reduce avg size to ${safeSize}.`);
-        }
+        if(netPnL < 0) painPoints.push("Account Red");
+        if(losses>0 && avgLoss > avgWin) painPoints.push("Avg Loss > Avg Win");
+        if(maxDD > balance * 0.05) painPoints.push("Drawdown > 5%");
         
-        const errorRate = (totalMistakes / activeTrades.length) * 100;
-        if (errorRate > 20) {
-            painPoints.push(`Strategy Drift: ${errorRate.toFixed(0)}% trades have errors.`);
-             const topMistake = Object.keys(mistakeCounts).reduce((a, b) => mistakeCounts[a] > mistakeCounts[b] ? a : b, '');
-             if(topMistake) painPoints.push(`Main Leak: ${topMistake}. Fix this first.`);
-        }
-
-        if(avgWin < avgLoss) painPoints.push("Avg Loss > Avg Win");
-        if(maxLossStreak >= 3) painPoints.push(`Max Loss Streak: ${maxLossStreak} (Watch Tilt)`);
-        
-        // "Room for Improvement" Logic
-        if (painPoints.length === 0) {
-             if (winRate < 45) insights.push("Good management, but need better entry selection (WR < 45%)");
-             else if (pf < 1.5 && pf > 1.0) insights.push("Profitable but choppy. Focus on A+ setups.");
-             else insights.push("Consistency unlocked. Scale slowly.");
-        }
+        if(painPoints.length === 0 && insights.length === 0) insights.push("No major alerts. Consistent execution.");
 
         return {
             netPnL: netPnL.toFixed(2), winRate: winRate.toFixed(1), profitFactor: pf.toFixed(2), maxDrawdown: maxDD.toFixed(2), expectancy: expectancy.toFixed(2),
             avgWin: avgWin.toFixed(2), avgLoss: avgLoss.toFixed(2),
-            sqn: sqn.toFixed(2), bestDay: bestDay.toFixed(2), worstDay: worstDay.toFixed(2),
-            maxWinStreak, maxLossStreak,
-            longStats: { pnl: longPnL.toFixed(2), count: longCount },
-            shortStats: { pnl: shortPnL.toFixed(2), count: shortCount },
             equityCurve: equity.map((e,i)=>({equity:e})),
             sessionChartData: Object.keys(timeStats).map(k=>({name:k, pnl:timeStats[k]})),
             durationChartData: Object.keys(durationStats).map(k=>({name:k, winRate: durationStats[k].total>0?(durationStats[k].wins/durationStats[k].total)*100:0})),
             strategyDnaData: Object.keys(strategyStats).map(k=>({name:k, ...strategyStats[k], wr:(strategyStats[k].wins/strategyStats[k].count*100).toFixed(0)})).sort((a,b)=>b.pnl-a.pnl),
-            insights, painPoints, metricsSummaryText: `Net: ${netPnL.toFixed(2)}, WR: ${winRate.toFixed(1)}%, SQN: ${sqn.toFixed(2)}`
+            insights, painPoints, metricsSummaryText: `Net: ${netPnL.toFixed(2)}, WR: ${winRate.toFixed(1)}%`
         };
     } catch(e) {
         console.error("Metric Calc Error:", e);
@@ -300,99 +188,22 @@ const calculateMetrics = (trades, balance, overhead, selectedAccount, filterTick
     }
 };
 
-const SettingsModal = ({ overhead, setOverhead, accounts, setAccounts, onClose, apiKey, setApiKey }) => {
-    const handleSave = () => {
-        try {
-            if(apiKey) localStorage.setItem('gemini_key', JSON.stringify(apiKey));
-        } catch(e) {}
-        onClose();
-    };
-
+const SettingsModal = ({ overhead, setOverhead, accounts, setAccounts, onClose }) => {
+    const [newAcc, setNewAcc] = useState("");
     return (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <Card className="w-full max-w-sm p-4 bg-slate-950 border border-slate-800">
                 <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-white">Settings</h3><button onClick={onClose}><Icons.X/></button></div>
-                
-                <div className="mb-4 space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1"><Icons.Key size={12}/> API Key</label>
-                    <input 
-                        type="password" 
-                        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs" 
-                        value={apiKey} 
-                        onChange={e => setApiKey(e.target.value)} 
-                        placeholder="Enter Gemini API Key..."
-                    />
-                    <p className="text-[10px] text-slate-500">Required for LiveDesk and Playback AI.</p>
-                </div>
-
-                <div className="mb-6 space-y-2">
+                <div className="mb-6 space-y-3">
                     <label className="text-xs font-bold text-slate-400 uppercase">Risk Unit ($)</label>
-                    <input type="number" className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-xs" value={overhead.riskUnit || 150} onChange={e=>setOverhead({...overhead, riskUnit: e.target.value})} />
+                    <input type="number" className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white" value={overhead.riskUnit || 150} onChange={e=>setOverhead({...overhead, riskUnit: e.target.value})} />
                 </div>
-
-                <button 
-                    onClick={handleSave}
-                    className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded flex items-center justify-center gap-2 transition-colors"
-                >
-                    <Icons.CheckCircle2 size={16} /> Save Settings
-                </button>
-            </Card>
-        </div>
-    );
-};
-
-const StrategyModal = ({ strategy, setStrategy, onClose }) => {
-    const [localStrategy, setLocalStrategy] = useState(strategy);
-    const [isSaved, setIsSaved] = useState(false);
-    
-    const handleSave = () => {
-        setStrategy(localStrategy);
-        persistentStore.set('user_strategy_dna', localStrategy);
-        setIsSaved(true);
-        setTimeout(() => {
-            setIsSaved(false);
-            onClose();
-        }, 1000);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-2xl p-6 bg-slate-950 border border-slate-800 h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-800">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-600 rounded"><Icons.Book size={20} className="text-white"/></div>
-                        <div>
-                            <h3 className="font-bold text-white text-lg">Strategy DNA</h3>
-                            <p className="text-xs text-slate-400">Define your edge. This context is used by the AI Coach.</p>
-                        </div>
-                    </div>
-                    <button onClick={onClose}><Icons.X/></button>
+                <div className="mb-2"><h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Accounts</h4></div>
+                <div className="flex gap-2 mb-4">
+                    <input className="bg-slate-900 border border-slate-700 text-white text-sm rounded px-2 py-1 flex-1" value={newAcc} onChange={e=>setNewAcc(e.target.value)} placeholder="New Account"/>
+                    <button onClick={()=>{if(newAcc&&!accounts.includes(newAcc)){setAccounts([...accounts,newAcc]);setNewAcc("")}}} className="bg-indigo-600 text-white px-3 rounded"><Icons.Plus/></button>
                 </div>
-                
-                <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase">Core Strategy & Setup Rules</label>
-                        <textarea 
-                            className="w-full bg-slate-900 border border-slate-700 rounded p-4 text-sm text-white h-64 focus:border-indigo-500 focus:outline-none leading-relaxed"
-                            value={localStrategy}
-                            onChange={(e) => setLocalStrategy(e.target.value)}
-                            placeholder="e.g. I trade mean reversion on 5m timeframe using VWAP. My entry trigger is a hammer candle at..."
-                        />
-                    </div>
-                    
-                    <div className="bg-indigo-900/20 p-4 rounded border border-indigo-900/50">
-                        <p className="text-xs text-indigo-300">💡 <strong>Pro Tip:</strong> Be specific. The more details you provide about your entry triggers, stop loss placement, and profit targets, the better the AI can audit your charts.</p>
-                    </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-800 flex justify-end">
-                    <button 
-                        onClick={handleSave}
-                        className={`${isSaved ? 'bg-emerald-600' : 'bg-indigo-600 hover:bg-indigo-500'} text-white font-bold py-2 px-6 rounded flex items-center gap-2 transition-colors`}
-                    >
-                        {isSaved ? <><Icons.CheckCircle2 size={16} /> Saved!</> : <><Icons.CheckCircle2 size={16} /> Save Strategy DNA</>}
-                    </button>
-                </div>
+                <div className="space-y-2 max-h-48 overflow-auto">{accounts.map(a=><div key={a} className="flex justify-between bg-slate-900 p-2 rounded border border-slate-800 text-sm text-slate-300">{a}{a!=='Main'&&<button onClick={()=>setAccounts(accounts.filter(acc=>acc!==a))} className="text-rose-500"><Icons.Trash2/></button>}</div>)}</div>
             </Card>
         </div>
     );
@@ -419,15 +230,11 @@ const PnLCalendar = ({ trades }) => {
     return (
         <div className="grid grid-cols-7 gap-2">
             {days.map(d => {
-                const pnl = dailyData[d];
-                // Only show color if data exists, otherwise plain slate
-                const hasTrade = pnl !== undefined;
+                const pnl = dailyData[d] || 0;
                 return (
-                    <div key={d} className={`p-1 rounded border text-center ${hasTrade ? (pnl > 0 ? 'bg-emerald-900/30 border-emerald-800' : pnl < 0 ? 'bg-rose-900/30 border-rose-800' : 'bg-slate-800 border-slate-600') : 'bg-slate-900/50 border-slate-800/50'}`}>
+                    <div key={d} className={`p-1 rounded border text-center ${pnl>0?'bg-emerald-900/30 border-emerald-800':pnl<0?'bg-rose-900/30 border-rose-800':'bg-slate-800 border-slate-700'}`}>
                         <div className="text-[8px] text-slate-500">{d.slice(5)}</div>
-                        <div className={`text-[10px] font-bold ${hasTrade ? (pnl>0?'text-emerald-400':pnl<0?'text-rose-400':'text-slate-400') : 'text-slate-700'}`}>
-                            {hasTrade ? (pnl===0?'-': Math.abs(pnl)>999?(pnl/1000).toFixed(1)+'k':pnl.toFixed(0)) : '-'}
-                        </div>
+                        <div className={`text-[10px] font-bold ${pnl>0?'text-emerald-400':pnl<0?'text-rose-400':'text-slate-600'}`}>{pnl===0?'-':Math.abs(pnl)>999?(pnl/1000).toFixed(1)+'k':pnl.toFixed(0)}</div>
                     </div>
                 );
             })}
@@ -436,7 +243,7 @@ const PnLCalendar = ({ trades }) => {
 };
 
 // --- COACH WIDGET ---
-const CoachWidget = ({ metrics, apiKey, globalStrategy, trades }) => {
+const CoachWidget = ({ metrics, apiKey, setApiKey }) => {
     const [mode, setMode] = useState('report'); 
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -457,13 +264,8 @@ const CoachWidget = ({ metrics, apiKey, globalStrategy, trades }) => {
         setImageBase64(null);
         setIsThinking(true);
 
-        // Get last 3 trades for context
-        const recentTrades = trades.slice(-3).map(t => 
-            `Trade: ${t.ticker} ${t.direction} | PnL: $${t.pnl} | Entry: ${t.entry}, Exit: ${t.exit}, Size: ${t.size}`
-        ).join('\n');
-
         try {
-            const promptText = input || `Analyze this image. Context: ${globalStrategy}. Recent Trades: ${recentTrades}. If it is a price chart, identify the trend, key support/resistance levels, and any visible candlestick patterns. If it is a P&L or trade list, calculate the metrics and spot any trading errors.`;
+            const promptText = input || "Analyze this image. If it is a price chart, identify the trend, key support/resistance levels, and any visible candlestick patterns. If it is a P&L or trade list, calculate the metrics and spot any trading errors.";
             const parts = [{ text: promptText }];
             if (userMsg.image) parts.push({ inlineData: { mimeType: "image/png", data: userMsg.image } });
             
@@ -473,6 +275,7 @@ const CoachWidget = ({ metrics, apiKey, globalStrategy, trades }) => {
                 body: JSON.stringify({ contents: [{ parts }] })
             });
             const data = await response.json();
+            if(data.error) throw new Error(data.error.message);
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't analyze that. Try again.";
             setMessages(p => [...p, { role: 'ai', content: text }]);
         } catch (e) {
@@ -523,7 +326,7 @@ const CoachWidget = ({ metrics, apiKey, globalStrategy, trades }) => {
             <CardContent className="flex-1 overflow-y-auto p-0 relative">
                 {mode === 'report' ? (
                     <div className="p-4 space-y-4">
-                        {metrics?.insights?.length > 0 && (
+                        {metrics?.insights.length > 0 && (
                             <div className="bg-emerald-950/20 rounded p-2 border border-emerald-900/30">
                                 <div className="text-[10px] text-emerald-500 font-bold uppercase mb-1">Strength</div>
                                 <ul className="space-y-1">
@@ -531,7 +334,7 @@ const CoachWidget = ({ metrics, apiKey, globalStrategy, trades }) => {
                                 </ul>
                             </div>
                         )}
-                        {metrics?.painPoints?.length > 0 ? (
+                        {metrics?.painPoints.length > 0 ? (
                             <div className="bg-rose-950/20 rounded p-2 border border-rose-900/30">
                                 <div className="text-[10px] text-rose-500 font-bold uppercase mb-1">Focus Area</div>
                                 <ul className="space-y-1">
@@ -567,7 +370,7 @@ const CoachWidget = ({ metrics, apiKey, globalStrategy, trades }) => {
 };
 
 // --- STRATEGY ROOM ---
-const StrategyRoom = ({ state, setState, apiKey, setApiKey, globalStrategy }) => {
+const StrategyRoom = ({ state, setState, apiKey, setApiKey }) => {
     const [inputMessage, setInputMessage] = useState("");
     const { imageBase64, messages, userStrategy, selectedTicker, timeframe, riskAmount } = state;
     const fileInputRef = useRef(null);
@@ -609,20 +412,14 @@ const StrategyRoom = ({ state, setState, apiKey, setApiKey, globalStrategy }) =>
 
     const runInitialAnalysis = async () => {
         setState(prev => ({ ...prev, messages: [] }));
-        const strategyContext = globalStrategy ? `USER'S STRATEGY DNA: "${globalStrategy}". Use this to filter setups.` : `USER STRATEGY: Standard Price Action.`;
-        const prompt = `You are a blunt, professional trading mentor. Analyze the uploaded ${selectedTicker} (${timeframe}) chart.
-        ${strategyContext}
-        OUTPUT FORMAT (Use icons, No markdown headers like #):
-        
-        🧭 DIRECTION & STRUCTURE
-        ( concise analysis of trend and levels )
-
-        ⚡ TRADE IDEAS & SETUP
-        ( 🐂 Bullish Case: ... )
-        ( 🐻 Bearish Case: ... )
-
-        🛡️ RISK & INVALIDATION
-        ( Where does this trade fail? )`;
+        const strategyContext = userStrategy ? `USER'S STRATEGY: "${userStrategy}". Check alignment.` : `USER STRATEGY: Standard Price Action.`;
+        const prompt = `You are an expert institutional futures trader. Analyze the uploaded ${selectedTicker} (${timeframe}) chart image. 
+        TASK:
+        1. READ THE CHART: Identify the immediate trend, key Support/Resistance levels, and market structure.
+        2. CALCULATE: Estimate the Risk/Reward ratio for a potential setup visible now.
+        3. PLAN: Create a trade plan based on the "${userStrategy || 'Price Action'}" strategy.
+        4. EXECUTION: Entry price, Stop Loss (based on $${riskAmount} risk), and Take Profit targets.
+        OUTPUT: A structured, professional trading plan.`;
         
         const result = await callGemini(prompt);
         if (result) { setState(prev => ({ ...prev, generatedPlan: result, messages: [{ role: 'ai', content: result }] })); }
@@ -633,7 +430,7 @@ const StrategyRoom = ({ state, setState, apiKey, setApiKey, globalStrategy }) =>
         const msg = inputMessage;
         setInputMessage("");
         setState(prev => ({ ...prev, messages: [...prev.messages, { role: 'user', content: msg }] }));
-        const result = await callGemini(msg + " \n\n(Context: Experienced trader. Be critical and concise. No markdown formatting.)");
+        const result = await callGemini(msg);
         if (result) { setState(prev => ({ ...prev, messages: [...prev.messages, { role: 'ai', content: result }] })); }
     };
 
@@ -654,11 +451,7 @@ const StrategyRoom = ({ state, setState, apiKey, setApiKey, globalStrategy }) =>
     };
 
     return (
-        <div 
-            className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)] min-h-[600px] animate-in fade-in duration-500 focus:outline-none"
-            onPaste={handlePaste}
-            tabIndex={0}
-        >
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)] min-h-[600px] animate-in fade-in duration-500">
             <Card className="lg:w-2/3 h-full flex flex-col">
                 <CardHeader className="flex justify-between items-center bg-slate-950/30">
                     <CardTitle className="flex items-center gap-2"><Icons.Image size={18} className="text-indigo-400"/> Chart Source</CardTitle>
@@ -669,13 +462,9 @@ const StrategyRoom = ({ state, setState, apiKey, setApiKey, globalStrategy }) =>
                     <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
                 </CardHeader>
                 <div className="flex-1 bg-black/40 m-4 rounded flex items-center justify-center relative">
-                    {imageBase64 ? <img src={`data:image/png;base64,${imageBase64}`} alt="Chart" className="w-full h-full object-contain" /> : <div className="text-slate-600 flex flex-col items-center"><Icons.Upload size={48} className="mb-2 opacity-30"/><span className="text-sm">Upload Chart (or Paste Ctrl+V)</span></div>}
+                    {imageBase64 ? <img src={`data:image/png;base64,${imageBase64}`} alt="Chart" className="w-full h-full object-contain" /> : <div className="text-slate-600 flex flex-col items-center"><Icons.Upload size={48} className="mb-2 opacity-30"/><span className="text-sm">Upload Chart</span></div>}
                 </div>
-                <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-between items-center">
-                    <div className="flex-1 mr-4">
-                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Active Strategy Context</div>
-                         <div className="text-xs text-indigo-300 truncate max-w-md">{globalStrategy || "No Strategy DNA set. Click the Book icon above to define it."}</div>
-                    </div>
+                <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end">
                     <button onClick={runInitialAnalysis} disabled={!imageBase64 || state.isAnalyzing} className="bg-emerald-600 px-6 py-2 rounded text-white text-sm font-bold flex gap-2 disabled:opacity-50">
                         {state.isAnalyzing ? "Analyzing..." : <><Icons.Brain size={16}/> Generate Plan</>}
                     </button>
@@ -688,9 +477,7 @@ const StrategyRoom = ({ state, setState, apiKey, setApiKey, globalStrategy }) =>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-600 text-xs text-center"><Icons.Activity size={32} className="mb-3 opacity-20" /><p>Ready to chat.</p></div> : messages.map((msg, idx) => (
-                        <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                             <div className={`max-w-[95%] rounded-2xl p-4 text-lg font-medium leading-8 tracking-wide shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800/80 text-slate-100 border border-slate-700/50 rounded-bl-none'}`}>{msg.content}</div>
-                        </div>
+                        <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}><div className={`max-w-[95%] rounded-2xl p-4 text-[15px] font-medium leading-7 shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800/80 text-slate-100 border border-slate-700/50 rounded-bl-none'}`}>{msg.content}</div></div>
                     ))}
                     <div ref={chatEndRef} />
                 </CardContent>
@@ -705,7 +492,7 @@ const StrategyRoom = ({ state, setState, apiKey, setApiKey, globalStrategy }) =>
 };
 
 // --- PLAYBACK COMPONENT ---
-const Playback = ({ state, setState, apiKey, setApiKey, globalStrategy }) => {
+const Playback = ({ state, setState, apiKey, setApiKey }) => {
     const { imageBase64, messages } = state;
     const fileInputRef = useRef(null);
     const chatEndRef = useRef(null);
@@ -747,22 +534,14 @@ const Playback = ({ state, setState, apiKey, setApiKey, globalStrategy }) => {
 
     const runAnalysis = async () => {
         if (!imageBase64) { setState(prev => ({...prev, error: "Please upload a chart."})); return; }
-        const prompt = `You are a Risk Manager auditing a senior trader's execution. 
-USER STRATEGY: "${globalStrategy || 'Discretionary'}"
-
-Provide a harsh, rapid-fire audit. No basic explanations. No markdown (* or #). Use these icons:
-
-🔍 STRUCTURAL EDGE
-▸ [Was the context valid?]
-
-💡 TRADE IDEAS (Visible Setups)
-▸ [Identify valid setups present on chart]
-
-🔧 OPTIMIZATION
-▸ [Sizing/Execution refinement]
-
-📏 PROTOCOL
-▸ [One rule to enforce]`;
+        const prompt = `You are a Trading Strategy Architect. Analyze this chart image which represents the user's "Perfect Setup". 
+        USER CONTEXT: "${state.strategyDescription || 'No description provided.'}".
+        TASK:
+        1. REVERSE ENGINEER: Visually identify the indicators and candle patterns that triggered this trade.
+        2. ANALYZE LOGIC: Explain *why* this setup worked based on price action.
+        3. CALCULATE: Estimate the R-Multiple (Risk:Reward) shown in the move.
+        4. RULES: Define 3 strict rules to replicate this setup.
+        OUTPUT: A Strategy DNA Report.`;
         
         const result = await callGemini(prompt);
         if (result) setState(prev => ({ ...prev, messages: [{ role: 'ai', content: result }] }));
@@ -772,7 +551,7 @@ Provide a harsh, rapid-fire audit. No basic explanations. No markdown (* or #). 
         if (!msgText.trim()) return;
         setLocalInput("");
         setState(prev => ({ ...prev, messages: [...(prev.messages || []), { role: 'user', content: msgText }] }));
-        const result = await callGemini(msgText + " \n\n(Context: Experienced trader. Be critical and concise. No markdown formatting.)");
+        const result = await callGemini(msgText);
         if (result) setState(prev => ({ ...prev, messages: [...(prev.messages || []), { role: 'ai', content: result }] }));
     };
 
@@ -793,26 +572,25 @@ Provide a harsh, rapid-fire audit. No basic explanations. No markdown (* or #). 
     };
 
     return (
-        <div 
-            className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)] min-h-[600px] animate-in fade-in duration-500 focus:outline-none"
-            onPaste={handlePaste}
-            tabIndex={0}
-        >
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)] min-h-[600px] animate-in fade-in duration-500">
             <Card className="lg:w-1/2 flex flex-col">
                 <CardHeader className="flex justify-between items-center bg-slate-950/30">
                     <CardTitle className="flex items-center gap-2"><Icons.BookOpen size={18} className="text-amber-400"/> My Playback</CardTitle>
                     <div className="flex gap-2 items-center">
                         {!apiKey && <input type="password" placeholder="API Key" onChange={e=>setApiKey(e.target.value)} className="bg-slate-900 border border-slate-700 text-xs text-white rounded px-2 py-1 w-24" />}
-                        <button onClick={() => fileInputRef.current?.click()} className="text-xs bg-indigo-600 px-3 py-1 rounded text-white hover:bg-indigo-500 transition-colors">Upload Chart</button>
+                        <button onClick={() => fileInputRef.current?.click()} className="text-xs bg-indigo-600 px-3 py-1 rounded text-white hover:bg-indigo-500 transition-colors">Upload Model Chart</button>
                         <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
                     </div>
                 </CardHeader>
                 <div className="flex-1 bg-black/40 m-4 rounded flex items-center justify-center relative min-h-[300px]">
-                    {imageBase64 ? <img src={`data:image/png;base64,${imageBase64}`} className="w-full h-full object-contain" alt="Strategy"/> : <div className="text-center text-slate-600"><Icons.Upload size={48} className="mb-2 mx-auto opacity-30"/><p className="text-sm">Upload your "Perfect Setup" Chart (or Paste Ctrl+V)</p></div>}
+                    {imageBase64 ? <img src={`data:image/png;base64,${imageBase64}`} className="w-full h-full object-contain" alt="Strategy"/> : <div className="text-center text-slate-600"><Icons.Upload size={48} className="mb-2 mx-auto opacity-30"/><p className="text-sm">Upload your "Perfect Setup" Chart</p></div>}
                 </div>
-                <div className="p-4 border-t border-slate-800">
-                    <div className="mb-2 text-[10px] text-slate-500 uppercase font-bold">Active Strategy Context: <span className="text-indigo-400 font-normal normal-case">{globalStrategy ? "Active" : "None"}</span></div>
-                    <button onClick={runAnalysis} disabled={!imageBase64 || state.isAnalyzing} className="w-full bg-amber-600 hover:bg-amber-500 py-3 rounded text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
+                <div className="p-4 border-t border-slate-800 space-y-4">
+                    <div className="bg-slate-900/50 border border-slate-800 rounded p-2">
+                        <div className="text-xs text-amber-500 font-bold mb-1 flex items-center gap-2"><Icons.Lightbulb size={12}/> STRATEGY NOTES</div>
+                        <textarea className="w-full bg-transparent text-sm font-medium text-slate-300 outline-none resize-none h-20 placeholder-slate-600" placeholder="List your indicators and rules here (e.g. VWAP bounce, RSI < 30)..." value={state.strategyDescription} onChange={e => setState(prev => ({...prev, strategyDescription: e.target.value}))}/>
+                    </div>
+                    <button onClick={runAnalysis} disabled={!imageBase64 || state.isAnalyzing} className="w-full bg-amber-600 hover:bg-amber-500 py-2 rounded text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
                         {state.isAnalyzing ? "Analyzing..." : <><Icons.Brain size={16}/> Analyze Strategy Logic</>}
                     </button>
                 </div>
@@ -824,9 +602,7 @@ Provide a harsh, rapid-fire audit. No basic explanations. No markdown (* or #). 
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.length === 0 ? <div className="h-full flex flex-col items-center justify-center text-slate-600 text-xs text-center p-8"><Icons.Activity size={32} className="mb-3 opacity-20" /><p>Ready to chat. Upload chart or ask questions.</p></div> : messages.map((msg, idx) => (
-                        <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                            <div className={`max-w-[95%] rounded-2xl p-4 text-lg font-medium leading-8 tracking-wide shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800/80 text-slate-100 border border-slate-700/50 rounded-bl-none'}`}>{msg.content}</div>
-                        </div>
+                        <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}><div className={`max-w-[95%] rounded-2xl p-4 text-[15px] leading-7 font-medium shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800/80 text-slate-100 border border-slate-700/50 rounded-bl-none'}`}>{msg.content}</div></div>
                     ))}
                     {state.isAnalyzing && <div className="text-xs text-slate-500 animate-pulse">Analyst is thinking...</div>}
                     <div ref={chatEndRef} />
@@ -846,51 +622,32 @@ const App = () => {
     const [activeTab, setActiveTab] = useState('journal');
     const [balance] = useState(50000); 
     const [showSettings, setShowSettings] = useState(false);
-    const [showStrategy, setShowStrategy] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [showChartModal, setShowChartModal] = useState(false);
     const [selectedChart, setSelectedChart] = useState(null);
     const fileInputRef = useRef(null);
     const chartInputRef = useRef(null);
 
-    const [overhead, setOverhead] = useState(()=>sessionStore.get('journal_overhead', {evalCost:39, commRate:2.53, riskUnit: 150}));
-    const [accounts, setAccounts] = useState(()=>sessionStore.get('journal_accounts', ['Main']));
+    const [overhead, setOverhead] = useState(()=>safeStorage.get('journal_overhead', {evalCost:39, commRate:2.53, riskUnit: 150}));
+    const [accounts, setAccounts] = useState(()=>safeStorage.get('journal_accounts', ['Main']));
     const [selectedAccount, setSelectedAccount] = useState('All');
     
-    // Global Persistent Strategy
-    const [globalStrategy, setGlobalStrategy] = useState(()=>persistentStore.get('user_strategy_dna', ''));
-
     const [filterTicker, setFilterTicker] = useState('All');
     const [filterSetup, setFilterSetup] = useState('All');
     
-    const [trades, setTrades] = useState(() => sessionStore.get('journal_trades', []));
-    
-    // --- PERSISTENT API KEY (LocalStorage) ---
-    const [apiKey, setApiKey] = useState(() => {
-        if (USER_API_KEY) return USER_API_KEY;
-        try {
-             const stored = localStorage.getItem('gemini_key');
-             if(stored) return JSON.parse(stored);
-        } catch(e) {}
-        return "";
-    });
-
-    // Save API key to localStorage when it changes
-    useEffect(() => { 
-        try {
-            if(apiKey) localStorage.setItem('gemini_key', JSON.stringify(apiKey)); 
-        } catch(e) {}
-    }, [apiKey]);
+    const [trades, setTrades] = useState(() => safeStorage.get('journal_trades', []));
+    const [apiKey, setApiKey] = useState(()=>safeStorage.get('gemini_key', ''));
     
     const [strategyState, setStrategyState] = useState({imageBase64:null, messages:[], isAnalyzing:false, userStrategy:"", selectedTicker:"MNQ", timeframe:"5m", riskAmount:150});
     const [playbookState, setPlaybookState] = useState({imageBase64:null, messages:[], isAnalyzing:false, strategyDescription: ""});
 
-    const initialTrade = { date: new Date().toISOString().split('T')[0], time: '09:30', ticker: 'MNQ', direction: 'Long', entry: '', exit: '', size: '1', pnl: '', account: 'Main', notes: '', chartImage: null, pointValue: 2, fees: 1.12 };
+    const initialTrade = { date: new Date().toISOString().split('T')[0], time: '09:30', ticker: 'MNQ', direction: 'Long', entry: '', exit: '', size: '1', pnl: '', account: 'Main', notes: '', chartImage: null };
     const [newTrade, setNewTrade] = useState(initialTrade);
 
-    useEffect(() => { sessionStore.set('journal_trades', trades); }, [trades]);
-    useEffect(() => { sessionStore.set('journal_accounts', accounts); }, [accounts]);
-    useEffect(() => { sessionStore.set('journal_overhead', overhead); }, [overhead]);
+    useEffect(() => { safeStorage.set('journal_trades', trades); }, [trades]);
+    useEffect(() => { safeStorage.set('journal_accounts', accounts); }, [accounts]);
+    useEffect(() => { safeStorage.set('gemini_key', apiKey); }, [apiKey]);
+    useEffect(() => { safeStorage.set('journal_overhead', overhead); }, [overhead]);
 
     const metrics = useMemo(() => calculateMetrics(trades, balance, overhead, selectedAccount, filterTicker, filterSetup), [trades, balance, overhead, selectedAccount, filterTicker, filterSetup]);
     
@@ -915,76 +672,23 @@ const App = () => {
         }
     };
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        
-        setNewTrade(prev => {
-            let updates = { [name]: value };
-            
-            // Auto-update specs when ticker changes
-            if (name === 'ticker' && TICKER_SPECS[value]) {
-                updates.pointValue = TICKER_SPECS[value].pointValue;
-                // Update fees based on new ticker commission * current size
-                const currentSize = parseFloat(prev.size) || 1;
-                updates.fees = (TICKER_SPECS[value].commission * currentSize).toFixed(2);
-            }
-            
-            // If size changes, update fees based on current ticker
-            if (name === 'size') {
-                 const qty = parseFloat(value) || 0;
-                 if (TICKER_SPECS[prev.ticker]) {
-                     updates.fees = (TICKER_SPECS[prev.ticker].commission * qty).toFixed(2);
-                 }
-            }
-
-            return { ...prev, ...updates };
-        });
-    };
-
     const saveTrade = () => {
         let pnl = parseFloat(newTrade.pnl);
-        // Auto-calculate PnL if not provided
         if(isNaN(pnl) && newTrade.entry && newTrade.exit) {
-            const entry = parseFloat(newTrade.entry);
-            const exit = parseFloat(newTrade.exit);
-            const size = parseFloat(newTrade.size) || 1;
-            const ptVal = parseFloat(newTrade.pointValue) || 1; // Use the specific point value
-            const comms = parseFloat(newTrade.fees) || 0;
-
-            const diff = newTrade.direction === 'Long' ? exit - entry : entry - exit;
-            
-            // Gross PnL - Commissions
-            pnl = (diff * ptVal * size) - comms;
+            const diff = newTrade.direction === 'Long' ? newTrade.exit - newTrade.entry : newTrade.entry - newTrade.exit;
+            pnl = diff * (newTrade.ticker === 'MNQ' ? 2 : 20) * newTrade.size;
         }
-        
         const trade = { ...newTrade, id: editingId || Date.now(), pnl: (pnl||0).toFixed(2), account: newTrade.account || accounts[0] };
         if(editingId) { setTrades(trades.map(t=>t.id===editingId?trade:t)); setEditingId(null); }
         else { setTrades([...trades, trade]); }
-        
-        // Add new account to list if it doesn't exist
-        if (newTrade.account && !accounts.includes(newTrade.account)) {
-            setAccounts(prev => [...prev, newTrade.account]);
-        }
-
-        // Reset form but keep last used account/ticker for convenience? Or reset to defaults.
-        // Let's reset to defaults for safety.
         setNewTrade({...initialTrade, account: newTrade.account});
     };
 
     const deleteTrade = (id) => { setTrades(trades.filter(t=>t.id!==id)); };
     const startEdit = (t) => { setNewTrade(t); setEditingId(t.id); };
+    const clearAllData = () => { setTrades([]); };
     
-    // --- CLEAR LOGIC (UPDATED) ---
-    const clearAllData = () => { 
-        setTrades([]); 
-        setStrategyState({imageBase64:null, messages:[], isAnalyzing:false, userStrategy:"", selectedTicker:"MNQ", timeframe:"5m", riskAmount:150});
-        setPlaybookState({imageBase64:null, messages:[], isAnalyzing:false, strategyDescription: ""});
-        
-        // Optional: Also clear from session storage to be thorough
-        sessionStorage.removeItem('journal_trades');
-    };
-    
-    // --- SMART IMPORT LOGIC (ENHANCED) ---
+    // --- SMART IMPORT LOGIC ---
     const handleImportClick = () => { if (fileInputRef.current) { fileInputRef.current.value = ""; fileInputRef.current.click(); } };
     
     const handleFileChange = (e) => { 
@@ -1022,106 +726,11 @@ const App = () => {
                  parseTradingView(lines, headers);
             } else if (headers.includes('ContractName') || headers.includes('PnL') || headers.includes('P&L')) {
                  parseTopstep(lines, headers);
-            } else if (headers.includes('fillTime')) { // Tradovate/TakeProfit check
-                 parseTradovate(lines, headers);
-            } else if (headers.includes('Fill Price')) { // Apex/Rithmic check
-                 parseApex(lines, headers);
             } else {
-                 alert("Unknown CSV format. Please ensure headers match NinjaTrader, TradingView, Topstep, Apex, or TakeProfitTrader exports.");
+                 alert("Unknown CSV format. Please ensure headers match NinjaTrader, TradingView, or Topstep exports.");
             }
         } catch(e) { console.error("Import Error", e); }
     };
-
-    // --- NEW PARSERS ---
-    const parseTradovate = (lines, headers) => {
-        const newTrades = [];
-        const targetAccount = selectedAccount === 'All' ? (accounts[0] || 'Main') : selectedAccount;
-        
-        // Adjust these index lookups based on actual file if needed
-        const idxContract = headers.findIndex(h => h.includes('Contract') || h.includes('Symbol'));
-        const idxSide = headers.findIndex(h => h.includes('Side'));
-        const idxQty = headers.findIndex(h => h.includes('Qty'));
-        const idxPrice = headers.findIndex(h => h.includes('Price') && !h.includes('Fill'));
-        const idxTime = headers.findIndex(h => h.includes('fillTime') || h.includes('Timestamp'));
-        const idxPnL = headers.findIndex(h => h.includes('P&L') || h.includes('PnL') || h.includes('Profit'));
-
-        for(let i=1; i<lines.length; i++) {
-            const row = splitCSV(lines[i]);
-            if(row.length < headers.length) continue;
-
-            const pnlRaw = row[idxPnL] || '0';
-            const pnl = parseFloat(pnlRaw.replace(/[$,\s]/g, ''));
-            const dateStr = parseRawDate(row[idxTime]);
-            const timeStr = row[idxTime] ? new Date(row[idxTime]).toTimeString().slice(0,5) : "12:00";
-
-            newTrades.push({
-                id: Date.now() + i,
-                date: dateStr,
-                time: timeStr,
-                ticker: row[idxContract],
-                direction: row[idxSide],
-                size: row[idxQty] || 1,
-                entry: row[idxPrice],
-                exit: '', // Tradovate fill report often splits entry/exit
-                pnl: pnl.toFixed(2),
-                fees: "0.00",
-                mistake: 'None',
-                notes: 'TakeProfit/Tradovate Import',
-                setup: 'Imported',
-                account: targetAccount,
-                chartImage: null
-            });
-        }
-        if (newTrades.length > 0) setTrades(prev => [...prev, ...newTrades]);
-    };
-
-    const parseApex = (lines, headers) => {
-        const newTrades = [];
-        const targetAccount = selectedAccount === 'All' ? (accounts[0] || 'Main') : selectedAccount;
-        
-        const idxSymbol = headers.findIndex(h => h.includes('Symbol') || h.includes('Instrument'));
-        const idxSide = headers.findIndex(h => h.includes('Side') || h.includes('Buy/Sell'));
-        const idxQty = headers.findIndex(h => h.includes('Qty') || h.includes('Quantity'));
-        const idxPrice = headers.findIndex(h => h.includes('Price') || h.includes('Fill Price'));
-        const idxTime = headers.findIndex(h => h.includes('Time'));
-        // Apex/Rithmic often exports fills, not PnL directly on fill report. 
-        // If PnL column exists, use it. Else default 0.
-        const idxPnL = headers.findIndex(h => h.includes('PnL') || h.includes('Profit'));
-
-        for(let i=1; i<lines.length; i++) {
-            const row = splitCSV(lines[i]);
-            if(row.length < headers.length) continue;
-
-            let pnl = 0;
-            if (idxPnL > -1) {
-                const pnlRaw = row[idxPnL] || '0';
-                pnl = parseFloat(pnlRaw.replace(/[$,\s]/g, ''));
-            }
-
-            const dateStr = parseRawDate(row[idxTime]);
-            const timeStr = row[idxTime] ? new Date(row[idxTime]).toTimeString().slice(0,5) : "12:00";
-
-            newTrades.push({
-                id: Date.now() + i,
-                date: dateStr,
-                time: timeStr,
-                ticker: row[idxSymbol],
-                direction: row[idxSide],
-                size: row[idxQty] || 1,
-                entry: row[idxPrice],
-                exit: '', 
-                pnl: pnl.toFixed(2),
-                fees: "0.00",
-                mistake: 'None',
-                notes: 'Apex Import',
-                setup: 'Imported',
-                account: targetAccount,
-                chartImage: null
-            });
-        }
-        if (newTrades.length > 0) setTrades(prev => [...prev, ...newTrades]);
-    };
-
 
     const parseNinjaTrader = (lines, headers) => {
         const newTrades = [];
@@ -1220,8 +829,6 @@ const App = () => {
             if(row.length < headers.length || !row[idxPnL]) continue;
 
             let pnlRaw = row[idxPnL].replace(/[$,\s]/g, ''); 
-            
-            // Fix: Handle parenthesized negative currency like ($100.00)
             let pnl = parseFloat(pnlRaw.replace(/[\(\)]/g, '')); 
             if(row[idxPnL].includes('(') || row[idxPnL].includes('-')) {
                  if (pnl > 0) pnl = -pnl; 
@@ -1262,6 +869,7 @@ const App = () => {
         const link = document.createElement("a"); link.setAttribute("href", encodeURI(csv)); link.setAttribute("download", "journal_export.csv"); document.body.appendChild(link); link.click();
     };
 
+    const handleInputChange = (e) => { const { name, value } = e.target; setNewTrade(prev => ({ ...prev, [name]: value })); };
     const [isAddingAccount, setIsAddingAccount] = useState(false);
     const [tempAccountName, setTempAccountName] = useState("");
     const addAccount = () => { setIsAddingAccount(true); };
@@ -1269,9 +877,8 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 p-6 font-sans">
-      {showSettings && <SettingsModal overhead={overhead} setOverhead={setOverhead} accounts={accounts} setAccounts={setAccounts} onClose={() => setShowSettings(false)} apiKey={apiKey} setApiKey={setApiKey} />}
+      {showSettings && <SettingsModal overhead={overhead} setOverhead={setOverhead} accounts={accounts} setAccounts={setAccounts} onClose={() => setShowSettings(false)} />}
       {showChartModal && <ImageModal image={selectedChart} onClose={() => setShowChartModal(false)} />}
-      {showStrategy && <StrategyModal strategy={globalStrategy} setStrategy={setGlobalStrategy} onClose={() => setShowStrategy(false)} />}
 
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row justify-between items-center border-b border-slate-800 pb-4 gap-4">
@@ -1279,7 +886,7 @@ const App = () => {
                 <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-2 rounded-lg">
                     <Icons.Activity size={24} className="text-white"/>
                 </div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Shock And Awe <span className="text-indigo-500">2.2</span></h1>
+                <h1 className="text-2xl font-bold text-white tracking-tight">Shock And Awe <span className="text-indigo-500">2.1</span></h1>
                 
                 {/* ACCOUNT SELECTOR */}
                 <div className="flex items-center bg-slate-900 border border-slate-700 rounded px-2 py-1">
@@ -1307,9 +914,6 @@ const App = () => {
             </div>
 
             <div className="flex items-center gap-4">
-                 <button onClick={() => setShowStrategy(true)} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" title="Strategy DNA">
-                    <Icons.Book size={20} className="text-indigo-400" />
-                 </button>
                  <button onClick={() => setShowSettings(true)} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
                     <Icons.Settings size={20} />
                  </button>
@@ -1325,9 +929,9 @@ const App = () => {
         </div>
 
         {activeTab === 'livedesk' ? (
-            <StrategyRoom state={strategyState} setState={setStrategyState} apiKey={apiKey} setApiKey={setApiKey} globalStrategy={globalStrategy} setGlobalStrategy={setGlobalStrategy} />
+            <StrategyRoom state={strategyState} setState={setStrategyState} apiKey={apiKey} setApiKey={setApiKey} />
         ) : activeTab === 'playback' ? (
-            <Playback state={playbookState} setState={setPlaybookState} apiKey={apiKey} setApiKey={setApiKey} globalStrategy={globalStrategy} />
+            <Playback state={playbookState} setState={setPlaybookState} apiKey={apiKey} setApiKey={setApiKey} />
         ) : (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                  <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".csv" style={{display: 'none'}} />
@@ -1464,14 +1068,9 @@ const App = () => {
                                 
                                 <div>
                                     <label className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Account</label>
-                                    <input 
-                                        type="text"
-                                        name="account" 
-                                        value={newTrade.account} 
-                                        onChange={handleInputChange} 
-                                        placeholder="Enter Account Name"
-                                        className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm focus:border-indigo-500 focus:outline-none transition-colors"
-                                    />
+                                    <select name="account" value={newTrade.account} onChange={handleInputChange} className="w-full bg-slate-800 border-slate-700 text-white rounded p-2 text-sm focus:border-indigo-500 focus:outline-none transition-colors">
+                                        {accounts.map(acc => <option key={acc} value={acc}>{acc}</option>)}
+                                    </select>
                                 </div>
                                 
                                 <div className="md:col-span-2">
@@ -1494,34 +1093,17 @@ const App = () => {
                             </div>
                         </CardContent>
                      </Card>
-                     <CoachWidget metrics={metrics} apiKey={apiKey} setApiKey={setApiKey} globalStrategy={globalStrategy} trades={displayedTrades} />
+                     <CoachWidget metrics={metrics} apiKey={apiKey} setApiKey={setApiKey} />
                  </div>
                  
                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
                          <Card>
-                            <CardHeader><CardTitle className="flex gap-2"><Icons.PieChart size={16}/> Strategy DNA</CardTitle></CardHeader>
-                            <CardContent>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-xs text-left text-slate-400">
-                                        <thead className="uppercase bg-slate-900 border-b border-slate-800">
-                                            <tr><th className="px-4 py-2">Strategy</th><th className="px-4 py-2">Trades</th><th className="px-4 py-2">Win %</th><th className="px-4 py-2">Net PnL</th><th className="px-4 py-2">Rating</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {metrics?.strategyDnaData?.map((s, i) => (
-                                                <tr key={i} className="border-b border-slate-800">
-                                                    <td className="px-4 py-2 font-bold text-white">{s.name}</td>
-                                                    <td className="px-4 py-2">{s.count}</td>
-                                                    <td className={`px-4 py-2 ${s.wr > 50 ? 'text-emerald-400' : 'text-rose-400'}`}>{s.wr}%</td>
-                                                    <td className={`px-4 py-2 ${s.pnl > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>${s.pnl.toFixed(0)}</td>
-                                                    <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.rating === 'A' ? 'bg-emerald-500 text-black' : s.rating === 'F' ? 'bg-rose-600 text-white' : 'bg-slate-700 text-white'}`}>{s.rating}</span></td>
-                                                </tr>
-                                            )) || <tr><td colSpan="5" className="text-center p-4 text-slate-600 italic">No strategy data yet. Tag your trades!</td></tr>}
-                                        </tbody>
-                                    </table>
-                                </div>
+                            <CardHeader><CardTitle className="text-sm">Session Performance (PnL)</CardTitle></CardHeader>
+                            <CardContent className="h-32">
+                                <SimpleBarChart data={metrics?.sessionChartData} dataKey="pnl"/>
                             </CardContent>
-                         </Card>
+                        </Card>
                         <Card>
                             <CardHeader><CardTitle className="flex gap-2 text-sm items-center"><Icons.Timer size={16}/> Win Rate by Trade Duration</CardTitle></CardHeader>
                             <CardContent className="h-48">
@@ -1538,6 +1120,32 @@ const App = () => {
                         </Card>
                     </div>
                  </div>
+                 
+                 {metrics?.strategyDnaData.length > 0 && (
+                     <Card>
+                        <CardHeader><CardTitle className="flex gap-2"><Icons.PieChart size={16}/> Strategy DNA</CardTitle></CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs text-left text-slate-400">
+                                    <thead className="uppercase bg-slate-900 border-b border-slate-800">
+                                        <tr><th className="px-4 py-2">Strategy</th><th className="px-4 py-2">Trades</th><th className="px-4 py-2">Win %</th><th className="px-4 py-2">Net PnL</th><th className="px-4 py-2">Rating</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {metrics.strategyDnaData.map((s, i) => (
+                                            <tr key={i} className="border-b border-slate-800">
+                                                <td className="px-4 py-2 font-bold text-white">{s.name}</td>
+                                                <td className="px-4 py-2">{s.count}</td>
+                                                <td className={`px-4 py-2 ${s.wr > 50 ? 'text-emerald-400' : 'text-rose-400'}`}>{s.wr}%</td>
+                                                <td className={`px-4 py-2 ${s.pnl > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>${s.pnl.toFixed(0)}</td>
+                                                <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.rating === 'A' ? 'bg-emerald-500 text-black' : s.rating === 'F' ? 'bg-rose-600 text-white' : 'bg-slate-700 text-white'}`}>{s.rating}</span></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                     </Card>
+                 )}
 
                  <Card>
                      <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
